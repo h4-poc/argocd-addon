@@ -6,4 +6,37 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: applicationtemplate-sample
 spec:
-  # TODO(user): Add fields here
+  name: redis-app
+  repoURL: https://github.com/example/redis-app
+  targetRevision: main
+  helm:
+    chart: redis
+    version: "1.0.0"
+    repository: "oci://registry-1.docker.io/bitnamicharts/redis"
+    defaultValuesPath: "helm/values.yaml"
+    renderTargets:
+      - valuesPath: "helm/values-sit.yaml"
+        destinationCluster:
+          matchLabels:
+            environment: sit
+            region: cn-hangzhou
+      - valuesPath: "helm/values-uat.yaml"
+        destinationCluster:
+          matchLabels:
+            environment: uat
+            region: cn-beijing
+      - valuesPath: "helm/values-prod.yaml"
+        destinationCluster:
+          name: kubernetes.default.svc-3396314289
+  kustomize:
+    renderTargets:
+      - path: "overlays/sit"
+        destinationCluster:
+          matchLabels:
+            environment: sit
+            region: cn-hangzhou
+      - path: "overlays/uat"
+        destinationCluster:
+          matchLabels:
+            environment: uat
+            region: cn-beijing

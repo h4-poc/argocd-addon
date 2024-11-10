@@ -1,100 +1,119 @@
-# argocd-addon
-// TODO(user): Add simple overview of use/purpose
+# ArgoCD Addon Controller Manager
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+This project extends ArgoCD functionality by providing two Custom Resource Definitions (CRDs) that enhance multi-cluster application deployment and cluster management.
 
-## Getting Started
+## Overview
 
-### Prerequisites
-- go version v1.21.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+### ApplicationTemplate CRD
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+The `ApplicationTemplate` CRD enables hybrid rendering support for both Helm charts and Kustomize configurations. Key features include:
 
-```sh
-make docker-build docker-push IMG=<some-registry>/argocd-addon:tag
+- Hybrid rendering support (Helm + Kustomize)
+- Multiple target cluster deployment
+- Environment-specific value configurations
+- Cluster selection via labels or direct reference
+
+Example:
+
+```yaml
+apiVersion: argocd-addon.github.com/v1alpha1
+kind: ApplicationTemplate
+metadata:
+  name: sample-application-template
+  namespace: application-templates
+spec:
+  name: app-chart                # required: name of the ApplicationTemplate
+  repoURL: https://example.com/redis  # required: source repository URL
+  targetRevision: main # option: default is main
+  helm:                         # required: Helm configuration
+    chart: "my-app-chart"       # required: chart name
+    version: "1.0.0"           # required: chart version
+    repository: "oci://registry-1.docker.io/bitnamicharts/redis"  # optional: Helm repository URL
+    defaultValuesPath: "helm/values.yaml"  # optional: default values file path
+    renderTargets:             # targets for rendering with different values
+      - valuesPath: "helm/values-sit.yaml"  # values file path relative to source repo
+        destinationCluster:    # required: cluster selector for deployment
+          matchLabels:
+            environment: sit
+            region: cn-hangzhou
+      - valuesPath: "helm/values-uat.yaml"
+        destinationCluster:
+          matchLabels:
+            environment: uat
+            region: cn-beijing
+      - valuesPath: "helm/values-sit0.yaml"
+        destinationCluster:
+          name: kubernetes.default.svc-3396314289  # direct reference to ArgoCD cluster
+  kustomize:                   # optional: Kustomize configuration
+    renderTargets:            # targets for Kustomize overlays
+      - path: "overlays/sit"  # overlay directory path
+        destinationCluster:
+          matchLabels:
+            environment: sit
+            region: cn-hangzhou
+      - path: "overlays/uat"
+        destinationCluster:
+          matchLabels:
+            environment: uat
+            region: cn-beijing
+status:
+  phase: Succeeded            # Overall status
+  matchedClusters:           # List of matched destination clusters
+    - name: "kubernetes.default.svc-3396314289"
+      matchedBy: "name"      # Matched by direct name reference
+      rendered: true
+    - name: "cluster-47.242.186.46-1493148463"
+      matchedBy: "labels"    # Matched by label selector
+      matchedLabels:
+        environment: sit
+        region: cn-hangzhou
+      rendered: true
+    - name: "cluster-47.242.187.46-1493148464"
+      matchedBy: "labels"
+      matchedLabels:
+        environment: uat
+        region: cn-beijing
+      rendered: true
+  renderedFiles:             # List of rendered manifest files
+    - path: "/tmp/redis-sit-cluster-kubernetes.default.svc-3396314289.yaml"
+      cluster: "kubernetes.default.svc-3396314289"
+      type: "helm+kustomize"  # Rendered with both Helm and Kustomize
+      timestamp: "2024-11-08T16:56:16+08:00"
+    - path: "/tmp/redis-uat-cluster-47.242.186.46-1493148463.yaml"
+      cluster: "cluster-47.242.186.46-1493148463"
+      type: "helm+kustomize"
+      timestamp: "2024-11-08T16:56:17+08:00"
+    - path: "/tmp/redis-kubernetes.default.svc-3396314289.yaml"
+      cluster: "kubernetes.default.svc-3396314289"
+      type: "helm"           # Rendered with Helm only
+      timestamp: "2024-11-08T16:56:18+08:00"
+  conditions:                # Status conditions
+    - type: Ready
+      status: "True"
+      lastUpdateTime: "2024-11-08T16:56:18+08:00"
+      reason: "RenderingSucceeded"
+      message: "Successfully rendered manifests for all matched clusters"
+    - type: ClusterMatching
+      status: "True"
+      lastUpdateTime: "2024-11-08T16:56:16+08:00"
+      reason: "ClustersMatched"
+      message: "Successfully matched 3 destination clusters"
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
-
-**Install the CRDs into the cluster:**
-
-```sh
-make install
-```
-
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
-
-```sh
-make deploy IMG=<some-registry>/argocd-addon:tag
-```
-
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
-
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
-```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following are the steps to build the installer and distribute this project to users.
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/argocd-addon:tag
-```
-
-NOTE: The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without
-its dependencies.
-
-2. Using the installer
-
-Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/argocd-addon/<tag or branch>/dist/install.yaml
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+Key Features:
+- **Metadata Management**:
+  - Environment classification (sit, uat, prod)
+  - Regional information
+  - Cloud provider tracking
+- **Secret Management**:
+  - Secure storage of cluster credentials
+  - Namespace-scoped secret references
+- **Label-based Operations**:
+  - Use standard Kubernetes labels for cluster selection
+  - Enable environment and region-based targeting
+- **ArgoCD Integration**:
+  - Direct mapping to ArgoCD cluster configurations
+  - Automatic sync with ArgoCD cluster states
 
 ## License
 
@@ -111,4 +130,3 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-
