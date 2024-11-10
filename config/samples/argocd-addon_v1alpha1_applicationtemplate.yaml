@@ -1,0 +1,9 @@
+apiVersion: argocd-addon.github.com/v1alpha1
+kind: ApplicationTemplate
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-addon
+    app.kubernetes.io/managed-by: kustomize
+  name: applicationtemplate-sample
+spec:
+  # TODO(user): Add fields here
