@@ -32,7 +32,7 @@ spec:
     defaultValuesPath: "helm/values.yaml"  # optional: default values file path
     renderTargets:             # targets for rendering with different values
       - valuesPath: "helm/values-sit.yaml"  # values file path relative to source repo
-        destinationCluster:    # required: cluster selector for deployment
+        destinationCluster:    # required: cluster selector for helm values.yaml
           matchLabels:
             environment: sit
             region: cn-hangzhou
@@ -44,7 +44,7 @@ spec:
       - valuesPath: "helm/values-sit0.yaml"
         destinationCluster:
           name: kubernetes.default.svc-3396314289  # direct reference to ArgoCD cluster
-  kustomize:                   # optional: Kustomize configuration
+  kustomize:                  # optional: Kustomize configuration
     renderTargets:            # targets for Kustomize overlays
       - path: "overlays/sit"  # overlay directory path
         destinationCluster:
@@ -60,15 +60,21 @@ status:
   phase: Succeeded            # Overall status
   matchedClusters:           # List of matched destination clusters
     - name: "kubernetes.default.svc-3396314289"
+      helmValuesPath: "helm/values-sit.yaml"
+      kustomizePath: "overlays/sit"
       matchedBy: "name"      # Matched by direct name reference
       rendered: true
     - name: "cluster-47.242.186.46-1493148463"
+      helmValuesPath: "helm/values-sit.yaml"
+      kustomizePath: "overlays/sit"
       matchedBy: "labels"    # Matched by label selector
       matchedLabels:
         environment: sit
         region: cn-hangzhou
       rendered: true
     - name: "cluster-47.242.187.46-1493148464"
+      helmValuesPath: "helm/values-uat.yaml"
+      kustomizePath: "overlays/uat"
       matchedBy: "labels"
       matchedLabels:
         environment: uat

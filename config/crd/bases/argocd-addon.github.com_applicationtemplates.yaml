@@ -221,6 +221,14 @@ spec:
                   description: MatchedCluster represents a cluster that matched the
                     selectors
                   properties:
+                    helmValuesPath:
+                      description: HelmValuesPath is the path to the Helm values file
+                        used for this cluster
+                      type: string
+                    kustomizePath:
+                      description: KustomizePath is the path to the Kustomize overlay
+                        used for this cluster
+                      type: string
                     matchedBy:
                       description: MatchedBy indicates how the cluster was matched
                         (name or labels)

@@ -138,6 +138,14 @@ type MatchedCluster struct {
 	// +optional
 	MatchedLabels map[string]string `json:"matchedLabels,omitempty"`
 
+	// HelmValuesPath is the path to the Helm values file used for this cluster
+	// +optional
+	HelmValuesPath string `json:"helmValuesPath,omitempty"`
+
+	// KustomizePath is the path to the Kustomize overlay used for this cluster
+	// +optional
+	KustomizePath string `json:"kustomizePath,omitempty"`
+
 	// Rendered indicates if manifests were rendered for this cluster
 	Rendered bool `json:"rendered"`
 }
